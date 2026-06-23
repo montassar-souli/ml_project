@@ -14,7 +14,27 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.svm import LinearSVC
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
+from datetime import datetime, timezone
+import os
+from elasticsearch import Elasticsearch
 
+def _get_elasticsearch():
+    return Elasticsearch(os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"))
+
+def index_metrics_to_elasticsearch(run_id, experiment_name, params, metrics, report):
+    es = _get_elasticsearch()
+    doc = {
+        "@timestamp": datetime.now(timezone.utc).isoformat(),
+        "run_id": run_id,
+        "experiment_name": experiment_name,
+        "params": params,
+        "metrics": {
+            "accuracy": metrics["accuracy"],
+        },
+        "report": report,
+    }
+    es.index(index=os.getenv("ELASTICSEARCH_INDEX", "mlflow-metrics"), document=doc)
+    
 def _get_mlflow():
     """Charge MLflow uniquement lorsque les fonctionnalités de réentraînement en ont besoin."""
     try:
