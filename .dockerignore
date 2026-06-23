@@ -1,0 +1,9 @@
+*
+!.dockerignore
+!Dockerfile
+!app.py
+!main.py
+!model_pipeline.py
+!front_server.py
+!svc_model.pkl
+!scaler.pkl

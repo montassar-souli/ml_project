@@ -1,11 +1,13 @@
 """FastAPI application exposing churn prediction."""
 
 from contextlib import asynccontextmanager
+import os
 import logging
 from typing import Any, Literal
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
@@ -226,9 +228,19 @@ app = FastAPI(
 	lifespan=lifespan,
 )
 
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:8000")
+app.add_middleware(
+	CORSMiddleware,
+	allow_origins=[frontend_origin],
+	allow_credentials=True,
+	allow_methods=["*"],
+	allow_headers=["*"],
+)
 
-def build_ui_html() -> str:
+
+def build_ui_html(api_base_url: str | None = None) -> str:
 	"""Construit une interface HTML simple pour tester les prédictions dans le navigateur."""
+	resolved_api_base_url = api_base_url or os.getenv("API_BASE_URL", "http://localhost:5000")
 	return """
 <!DOCTYPE html>
 <html lang="fr">
@@ -558,6 +570,7 @@ def build_ui_html() -> str:
 	</main>
 
 	<script>
+		const API_BASE_URL = {api_base_url!r};
 		const resultBox = document.getElementById('result');
 		const form = document.getElementById('predict-form');
 		const retrainForm = document.getElementById('retrain-form');
@@ -628,7 +641,7 @@ def build_ui_html() -> str:
 			setResult('Prédiction en cours...');
 
 			try {
-				const response = await fetch('/predict', {
+				const response = await fetch(`${API_BASE_URL}/predict`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload),
@@ -672,7 +685,7 @@ def build_ui_html() -> str:
 			setRetrainResult('Réentraînement en cours...');
 
 			try {
-				const response = await fetch('/retrain', {
+				const response = await fetch(`${API_BASE_URL}/retrain`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload),
@@ -699,7 +712,7 @@ def build_ui_html() -> str:
 	</script>
 </body>
 </html>
-"""
+""".replace("{api_base_url!r}", repr(resolved_api_base_url))
 
 
 @app.get("/", include_in_schema=False)

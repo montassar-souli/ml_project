@@ -13,8 +13,19 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.svm import LinearSVC
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-import mlflow
-import mlflow.sklearn
+
+
+def _get_mlflow():
+    """Charge MLflow uniquement lorsque les fonctionnalités de réentraînement en ont besoin."""
+    try:
+        import mlflow
+        import mlflow.sklearn
+    except ImportError as exc:
+        raise RuntimeError(
+            "MLflow est requis uniquement pour le réentraînement ou le suivi des expériences."
+        ) from exc
+
+    return mlflow
 
 
 def configure_mlflow(
@@ -24,6 +35,7 @@ def configure_mlflow(
     """
     Configure MLflow avec l'URI de tracking et le nom de l'expérience.
     """
+    mlflow = _get_mlflow()
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
     print(f"[INFO] MLflow configuré avec l'expérience: {experiment_name}")
@@ -114,6 +126,7 @@ def retrain_model(
     Réentraîne le modèle avec de nouveaux hyperparamètres, puis persiste les artefacts.
     Enregistre les métriques et paramètres dans MLflow.
     """
+    mlflow = _get_mlflow()
     with mlflow.start_run():
         X_train, X_test, y_train, y_test, scaler = prepare_data(
             data_path=data_path, test_size=test_size, random_state=random_state
